@@ -31,20 +31,11 @@ module.exports.register = async (req, res) => {
       password: hashPass,
       address,
       otp,
-      otpExpire: Date.now() + 5 * 60 * 1000, // valid for 5 min
+      otpExpire: Date.now() + 2 * 60 * 1000, // valid for 2 min
     });
 
     await newUser.save();
   
-    
-  // !   Send welcome email
-  //   await sendMail(
-  //     email,
-  //     "Welcome to Our Platform",
-  //     `<h2>Hello ${username}, your registration was successful!</h2>`
-  //   );
-  //   res.redirect("/login");
-
    //! Send OTP Mail
 
     await sendMail(
@@ -54,11 +45,12 @@ module.exports.register = async (req, res) => {
         <h2>Hello ${username}</h2>
         <p>Your OTP is:</p>
         <h1>${otp}</h1>
-        <p>Valid for 5 minutes.</p>
+        <p>Valid for 2 minutes.</p>
     `
     );
 
     // Redirect to OTP page
+    req.flash("success", "OTP sent successfully!");
     res.redirect(`/verify-otp?email=${email}`);
   } catch (err) {
      console.log(`Register User Error : ${err.message}`);
@@ -70,6 +62,8 @@ module.exports.renderVerifyOtp = (req, res) => {
   const { email } = req.query;
   res.render("user/verifyOtp.ejs", { email });
 };
+
+
 
 module.exports.verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
@@ -101,6 +95,52 @@ module.exports.verifyOtp = async (req, res) => {
   req.flash("success", "OTP Verified! Please login.");
   res.redirect("/login");
 };
+
+//!Resend OTP
+module.exports.resendOtp = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      req.flash("error", "User not found!");
+      return res.redirect("/register");
+    }
+
+    if (user.isVerified) {
+      req.flash("success", "You are already verified!");
+      return res.redirect("/login");
+    }
+
+    // Generate new OTP
+    const newOtp = generateOTP();
+    user.otp = newOtp;
+    user.otpExpire = Date.now() + 2 * 60 * 1000; // valid for  2 min
+    await user.save();
+
+    // Send OTP email again
+    await sendMail(
+      email,
+      "New OTP Verification Code",
+      `
+        <h2>Hello ${user.username}</h2>
+        <p>Your new OTP is:</p>
+        <h1>${newOtp}</h1>
+        <p>Valid for 2 minutes.</p>
+      `
+    );
+
+    req.flash("success", "New OTP sent to your email!");
+    res.redirect(`/verify-otp?email=${email}`);
+
+  } catch (error) {
+    console.log("Resend OTP Error:", error);
+    req.flash("error", "Something went wrong!");
+    res.redirect("/register");
+  }
+};
+
 
 
 //! user Login
