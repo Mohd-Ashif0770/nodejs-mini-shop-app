@@ -26,12 +26,16 @@ const userSchema = new mongoose.Schema({
   address: {
     type: String,
   },
+  otp: String,
+  otpExpire: Date,
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
-
-
 
 module.exports = mongoose.model("User", userSchema);

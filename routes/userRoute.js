@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const {renderRegister,register, renderLogin, login, renderProducts, logout} = require('../controllers/userController')
+const {renderRegister,register, renderLogin, login, renderProducts, logout, renderVerifyOtp, verifyOtp} = require('../controllers/userController')
 
 
 router.get("/register", renderRegister)
@@ -11,5 +11,8 @@ router.get("/shop", renderProducts)
 
 router.post("/register", register)
 router.post("/login", login)
+
+router.get("/verify-otp", renderVerifyOtp);
+router.post("/verify-otp", verifyOtp);
 
 module.exports= router;

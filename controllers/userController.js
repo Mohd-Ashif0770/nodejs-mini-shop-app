@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const product = require("../models/product");
 require("dotenv").config();
 const sendMail = require("../utils/mailer");
+const  {generateOTP}  = require("../utils/generateOTP");
 
 //! Register User
 module.exports.renderRegister = (req, res) => {
@@ -18,23 +19,89 @@ module.exports.register = async (req, res) => {
     if (user) {
       return res.status(401).json({ message: "User already registerd" });
     }
-    const newUser = new User({ username, email, password: hashPass, address });
+    // const newUser = new User({ username, email, password: hashPass, address });
+
+      // Generate OTP
+    const otp = generateOTP();
+    console.log("OTP:", otp);
+
+    const newUser = new User({
+      username,
+      email,
+      password: hashPass,
+      address,
+      otp,
+      otpExpire: Date.now() + 5 * 60 * 1000, // valid for 5 min
+    });
 
     await newUser.save();
   
     
-    // Send welcome email
+  // !   Send welcome email
+  //   await sendMail(
+  //     email,
+  //     "Welcome to Our Platform",
+  //     `<h2>Hello ${username}, your registration was successful!</h2>`
+  //   );
+  //   res.redirect("/login");
+
+   //! Send OTP Mail
+
     await sendMail(
       email,
-      "Welcome to Our Platform",
-      `<h2>Hello ${username}, your registration was successful!</h2>`
+      "Your OTP Verification Code",
+      `
+        <h2>Hello ${username}</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>Valid for 5 minutes.</p>
+    `
     );
 
-    res.redirect("/login");
+    // Redirect to OTP page
+    res.redirect(`/verify-otp?email=${email}`);
   } catch (err) {
-    console.log(`Register User Error : ${err.message}`);
+     console.log(`Register User Error : ${err.message}`);
   }
 };
+
+//! OTP Varification
+module.exports.renderVerifyOtp = (req, res) => {
+  const { email } = req.query;
+  res.render("user/verifyOtp.ejs", { email });
+};
+
+module.exports.verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    req.flash("error", "Invalid Email!");
+    return res.redirect("/register");
+  }
+
+  if (user.otp !== otp) {
+    req.flash("error", "Incorrect OTP!");
+    return res.redirect(`/verify-otp?email=${email}`);
+  }
+
+  if (user.otpExpire < Date.now()) {
+    req.flash("error", "OTP expired!");
+    return res.redirect(`/verify-otp?email=${email}`);
+  }
+
+  // Mark as verified
+  user.isVerified = true;
+  user.otp = null;
+  user.otpExpire = null;
+
+  await user.save();
+
+  req.flash("success", "OTP Verified! Please login.");
+  res.redirect("/login");
+};
+
 
 //! user Login
 module.exports.renderLogin = (req, res) => {
