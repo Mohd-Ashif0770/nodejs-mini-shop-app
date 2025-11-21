@@ -10,10 +10,12 @@ module.exports.renderAddProduct= (req, res)=>{
 }
 
 module.exports.addProduct= async(req, res)=>{
-  const {name, description, price, category,image} = req.body;
+  const {name, description, price, category} = req.body;
+  const imageUrl = req.file.path;
 
-  const product = new Product({name, description, price, category,image});
+  const product = new Product({name, description, price, category,image:imageUrl});
   const savedProduct = await product.save();
+   req.flash("success", "Product added successfully!");
   // res.status(201).json({message:"Product added", product:savedProduct});
   res.redirect("/admin")  
 }
