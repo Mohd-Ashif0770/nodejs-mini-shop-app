@@ -10,6 +10,7 @@ module.exports.renderAddProduct= (req, res)=>{
 }
 
 module.exports.addProduct= async(req, res)=>{
+  console.log("FILE RECEIVED:", req.file);
   const {name, description, price, category} = req.body;
   const imageUrl = req.file.path;
 
